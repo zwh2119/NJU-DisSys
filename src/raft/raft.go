@@ -18,7 +18,7 @@ package raft
 //
 
 import "sync"
-import "src/labrpc"
+import "dissys/labrpc"
 
 // import "bytes"
 // import "encoding/gob"
