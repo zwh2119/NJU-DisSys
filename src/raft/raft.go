@@ -587,7 +587,7 @@ func (rf *Raft) HeartBeat() {
 
 		rf.mu.Lock()
 		if rf.role != LEADER {
-			rf.mu.Lock()
+			rf.mu.Unlock()
 			continue
 		}
 		rf.mu.Unlock()
