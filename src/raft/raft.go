@@ -31,9 +31,9 @@ import "dissys/labrpc"
 // import "encoding/gob"
 
 const (
-	FOLLOWER  = 0
-	CANDIDATE = 1
-	LEADER    = 2
+	FOLLOWER = iota
+	CANDIDATE
+	LEADER
 )
 
 const (
@@ -476,7 +476,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	rf.mu.Lock()
-	lastLogIndex := rf.log[len(rf.log)-1].Index
+	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	index = lastLogIndex + 1
 	term = rf.currentTerm
 	isLeader = rf.role == LEADER
@@ -503,8 +503,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 func (rf *Raft) Kill() {
 	// Your code here, if desired.
 
-	rf.mu.Lock()
-	rf.mu.Unlock()
 }
 
 func (rf *Raft) resetElectionTimer() {
