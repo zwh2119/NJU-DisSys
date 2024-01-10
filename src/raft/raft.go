@@ -629,6 +629,10 @@ func (rf *Raft) Apply() {
 // for any long-running work.
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
+
+	DPrintf("[DEBUG] Svr[%v]: Start Func Make()\n", me)
+	defer DPrintf("[DEBUG] Svr[%v]: End Func Make()\n", me)
+
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
