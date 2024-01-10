@@ -232,6 +232,7 @@ func (rf *Raft) rejectVote(args RequestVoteArgs) bool {
 	if rf.votedFor != -1 && rf.votedFor != args.CandidateId {
 		return true
 	}
+	// $5.4.1的限制
 	lastLogIndex, lastLogTerm := rf.getLastLogIndexAndTerm()
 	if lastLogTerm != args.LastLogTerm {
 		return lastLogTerm > args.LastLogTerm
