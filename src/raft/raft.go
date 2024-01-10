@@ -7,10 +7,10 @@ package raft
 //
 // rf = Make(...)
 //   create a new Raft server.
-// rf.Start(command interface{}) (index, term, isleader)
+// rf.Start(command interface{}) (index, Term, isleader)
 //   start agreement on a new log entry
-// rf.GetState() (term, isLeader)
-//   ask a Raft for its current term, and whether it thinks it is leader
+// rf.GetState() (Term, isLeader)
+//   ask a Raft for its current Term, and whether it thinks it is leader
 // ApplyMsg
 //   each time a new entry is committed to the log, each Raft peer
 //   should send an ApplyMsg to the service (or tester)
@@ -46,7 +46,7 @@ const (
 	BackOff = -100
 )
 
-// as each Raft peer becomes aware that successive log entries are
+// as each Raft peer becomes aware that successive log Entries are
 // committed, the peer should send an ApplyMsg to the service (or
 // tester) on the same server, via the applyCh passed to Make().
 type ApplyMsg struct {
@@ -163,17 +163,17 @@ func (rf *Raft) readPersist(data []byte) {
 // example RequestVote RPC arguments structure.
 type RequestVoteArgs struct {
 	// Your data here.
-	term         int
-	candidateId  int
-	lastLogIndex int
-	lastLogTerm  int
+	Term         int
+	CandidateId  int
+	LastLogIndex int
+	LastLogTerm  int
 }
 
 // example RequestVote RPC reply structure.
 type RequestVoteReply struct {
 	// Your data here.
-	term        int
-	voteGranted bool
+	Term        int
+	VoteGranted bool
 }
 
 func (rf *Raft) getRequestVoteArgs() RequestVoteArgs {
@@ -182,10 +182,10 @@ func (rf *Raft) getRequestVoteArgs() RequestVoteArgs {
 
 	lastLogIndex, lastLogTerm := rf.getLastLogIndexAndTerm()
 	args := RequestVoteArgs{
-		term:         rf.currentTerm,
-		candidateId:  rf.me,
-		lastLogIndex: lastLogIndex,
-		lastLogTerm:  lastLogTerm,
+		Term:         rf.currentTerm,
+		CandidateId:  rf.me,
+		LastLogIndex: lastLogIndex,
+		LastLogTerm:  lastLogTerm,
 	}
 	return args
 }
@@ -204,12 +204,12 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	reply.voteGranted = false
-	reply.term = rf.currentTerm
+	reply.VoteGranted = false
+	reply.Term = rf.currentTerm
 
-	if rf.currentTerm < args.term {
-		rf.changeToFollower(args.term)
-	} else if rf.currentTerm > args.term {
+	if rf.currentTerm < args.Term {
+		rf.changeToFollower(args.Term)
+	} else if rf.currentTerm > args.Term {
 		return
 	}
 
@@ -217,14 +217,14 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 		return
 	}
 
-	if rf.votedFor == args.candidateId {
-		reply.voteGranted = true
+	if rf.votedFor == args.CandidateId {
+		reply.VoteGranted = true
 		rf.resetElectionTimer()
 		return
 	} else {
-		rf.currentTerm = args.term
-		rf.votedFor = args.candidateId
-		reply.voteGranted = true
+		rf.currentTerm = args.Term
+		rf.votedFor = args.CandidateId
+		reply.VoteGranted = true
 		rf.resetElectionTimer()
 	}
 
@@ -234,14 +234,14 @@ func (rf *Raft) rejectVote(args RequestVoteArgs) bool {
 	if rf.role == LEADER {
 		return true
 	}
-	if rf.votedFor != -1 && rf.votedFor != args.candidateId {
+	if rf.votedFor != -1 && rf.votedFor != args.CandidateId {
 		return true
 	}
 	lastLogIndex, lastLogTerm := rf.getLastLogIndexAndTerm()
-	if lastLogTerm != args.lastLogTerm {
-		return lastLogTerm > args.lastLogTerm
+	if lastLogTerm != args.LastLogTerm {
+		return lastLogTerm > args.LastLogTerm
 	}
-	return lastLogIndex > args.lastLogIndex
+	return lastLogIndex > args.LastLogIndex
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -277,7 +277,7 @@ func (rf *Raft) getElectionFromPeers() {
 				reply := RequestVoteReply{}
 				ok := rf.sendRequestVote(server, args, &reply)
 				if ok {
-					voteCh <- reply.voteGranted
+					voteCh <- reply.VoteGranted
 				} else {
 					voteCh <- false
 				}
@@ -315,18 +315,18 @@ func (rf *Raft) getElectionFromPeers() {
 }
 
 type AppendEntriesArgs struct {
-	term         int
-	leaderId     int
-	prevLogIndex int
-	prevLogTerm  int
-	entries      []LogEntry
-	leaderCommit int
+	Term         int
+	LeaderId     int
+	PrevLogIndex int
+	PrevLogTerm  int
+	Entries      []LogEntry
+	LeaderCommit int
 }
 
 type AppendEntriesReply struct {
-	term      int
-	success   bool
-	nextIndex int
+	Term      int
+	Success   bool
+	NextIndex int
 }
 
 func getMajoritySameIndex(matchIndex []int) int {
@@ -359,12 +359,12 @@ func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, ent
 func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
 	prevlogIndex, prevLogTerm, entries := rf.getAppendLogs(slave)
 	args := AppendEntriesArgs{
-		term:         rf.commitIndex,
-		leaderId:     rf.me,
-		prevLogIndex: prevlogIndex,
-		prevLogTerm:  prevLogTerm,
-		entries:      entries,
-		leaderCommit: rf.commitIndex,
+		Term:         rf.commitIndex,
+		LeaderId:     rf.me,
+		PrevLogIndex: prevlogIndex,
+		PrevLogTerm:  prevLogTerm,
+		Entries:      entries,
+		LeaderCommit: rf.commitIndex,
 	}
 	return args
 }
@@ -374,32 +374,32 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	defer rf.persist()
 	defer rf.mu.Unlock()
 
-	reply.success = false
-	reply.term = rf.currentTerm
+	reply.Success = false
+	reply.Term = rf.currentTerm
 
-	if rf.currentTerm > args.term {
+	if rf.currentTerm > args.Term {
 		return
 	}
 
-	rf.currentTerm = args.term
-	rf.changeToFollower(args.term)
+	rf.currentTerm = args.Term
+	rf.changeToFollower(args.Term)
 	rf.resetElectionTimer()
 
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
-	if args.prevLogIndex > lastLogIndex {
-		reply.nextIndex = lastLogIndex + 1
-	} else if rf.log[args.prevLogIndex].Term != args.prevLogTerm {
-		reply.nextIndex = BackOff
+	if args.PrevLogIndex > lastLogIndex {
+		reply.NextIndex = lastLogIndex + 1
+	} else if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		reply.NextIndex = BackOff
 	} else {
-		reply.success = true
-		rf.log = append(rf.log[0:args.prevLogIndex+1], args.entries...)
+		reply.Success = true
+		rf.log = append(rf.log[0:args.PrevLogIndex+1], args.Entries...)
 	}
 
-	if reply.success {
-		rf.leaderID = args.leaderId
-		if args.leaderCommit > rf.commitIndex {
+	if reply.Success {
+		rf.leaderID = args.LeaderId
+		if args.LeaderCommit > rf.commitIndex {
 			lastLogIndex, _ = rf.getLastLogIndexAndTerm()
-			rf.commitIndex = min(args.leaderCommit, lastLogIndex)
+			rf.commitIndex = min(args.LeaderCommit, lastLogIndex)
 
 		}
 	}
@@ -422,21 +422,21 @@ func (rf *Raft) sendAppendEntriesToPeer(slave int) {
 	ok := rf.sendAppendEntries(slave, args, &reply)
 	if ok {
 		rf.mu.Lock()
-		if reply.term > rf.currentTerm {
-			rf.changeToFollower(reply.term)
+		if reply.Term > rf.currentTerm {
+			rf.changeToFollower(reply.Term)
 			rf.resetElectionTimer()
 			rf.mu.Unlock()
 			return
 		}
 
-		if rf.role != LEADER || rf.currentTerm != args.term {
+		if rf.role != LEADER || rf.currentTerm != args.Term {
 			rf.mu.Unlock()
 			return
 		}
 
-		if reply.success {
-			lenEntries := len(args.entries)
-			rf.matchIndex[slave] = args.prevLogIndex + lenEntries
+		if reply.Success {
+			lenEntries := len(args.Entries)
+			rf.matchIndex[slave] = args.PrevLogIndex + lenEntries
 			rf.nextIndex[slave] = rf.matchIndex[slave] + 1
 			majorityIndex := getMajoritySameIndex(rf.matchIndex)
 
@@ -444,12 +444,12 @@ func (rf *Raft) sendAppendEntriesToPeer(slave int) {
 				rf.commitIndex = majorityIndex
 			}
 		} else {
-			if reply.nextIndex > 0 {
-				rf.nextIndex[slave] = reply.nextIndex
+			if reply.NextIndex > 0 {
+				rf.nextIndex[slave] = reply.NextIndex
 
-			} else if reply.nextIndex == BackOff {
-				prevIndex := args.prevLogIndex
-				for prevIndex > 0 && rf.log[prevIndex].Term == args.prevLogTerm {
+			} else if reply.NextIndex == BackOff {
+				prevIndex := args.PrevLogIndex
+				for prevIndex > 0 && rf.log[prevIndex].Term == args.PrevLogTerm {
 					prevIndex -= 1
 				}
 				rf.nextIndex[slave] = prevIndex + 1
@@ -468,7 +468,7 @@ func (rf *Raft) sendAppendEntriesToPeer(slave int) {
 //
 // the first return value is the index that the command will appear at
 // if it's ever committed. the second return value is the current
-// term. the third return value is true if this server believes it is
+// Term. the third return value is true if this server believes it is
 // the leader.
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
