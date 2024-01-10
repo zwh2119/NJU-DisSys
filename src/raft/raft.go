@@ -638,19 +638,24 @@ func (rf *Raft) HeartBeat() {
 	}
 }
 
+func (rf *Raft) applyMsgChan(index int) {
+	msg := ApplyMsg{
+		Index:       index,
+		Command:     rf.log[index].Command,
+		UseSnapshot: false,
+		Snapshot:    nil,
+	}
+	DPrintf("[DEBUG] Srv[%v](%s) apply log entry %+v", rf.me, rf.getRole(), rf.log[index].Command)
+	rf.applyChan <- msg
+}
+
 func (rf *Raft) Apply() {
 	for {
 		time.Sleep(10 * time.Millisecond)
 		rf.mu.Lock()
 		for rf.lastApplied < rf.commitIndex {
 			rf.lastApplied += 1
-			msg := ApplyMsg{
-				Index:       rf.lastApplied,
-				Command:     rf.log[rf.lastApplied].Command,
-				UseSnapshot: false,
-				Snapshot:    nil,
-			}
-			rf.applyChan <- msg
+			rf.applyMsgChan(rf.lastApplied)
 		}
 		rf.mu.Unlock()
 	}
