@@ -650,7 +650,8 @@ func (rf *Raft) changeToLeader() {
 
 func (rf *Raft) ElectLeader() {
 	for {
-		<-rf.electionTimer.C
+		// 等待 election timeout
+		<-rf.electionTimer.C // 表达式会被Block直到超时
 		rf.resetElectionTimer()
 
 		rf.mu.Lock()
@@ -665,7 +666,6 @@ func (rf *Raft) ElectLeader() {
 			rf.changeToCandidate()
 			rf.mu.Unlock()
 			rf.getElectionFromPeers()
-
 		}
 	}
 }
