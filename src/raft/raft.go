@@ -31,9 +31,9 @@ import "dissys/labrpc"
 // import "encoding/gob"
 
 const (
-	FOLLOWER = iota
+	LEADER = iota
+	FOLLOWER
 	CANDIDATE
-	LEADER
 )
 
 const (
