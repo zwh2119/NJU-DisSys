@@ -119,15 +119,9 @@ func (rf *Raft) persist() {
 	w := new(bytes.Buffer)
 	e := gob.NewEncoder(w)
 
-	if e.Encode(rf.currentTerm) != nil {
-		return
-	}
-	if e.Encode(rf.votedFor) != nil {
-		return
-	}
-	if e.Encode(rf.log) != nil {
-		return
-	}
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
 
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
@@ -146,15 +140,9 @@ func (rf *Raft) readPersist(data []byte) {
 	r := bytes.NewBuffer(data)
 	d := gob.NewDecoder(r)
 
-	if d.Decode(&rf.currentTerm) != nil {
-		return
-	}
-	if d.Decode(&rf.votedFor) != nil {
-		return
-	}
-	if d.Decode(&rf.log) != nil {
-		return
-	}
+	d.Decode(&rf.currentTerm)
+	d.Decode(&rf.votedFor)
+	d.Decode(&rf.log)
 
 }
 
@@ -369,6 +357,12 @@ func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
 	return args
 }
 
+func (rf *Raft) getNextIndex() int {
+	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
+	nextIndex := lastLogIndex + 1
+	return nextIndex
+}
+
 func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
 	defer rf.persist()
@@ -387,7 +381,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	if args.PrevLogIndex > lastLogIndex {
-		reply.NextIndex = lastLogIndex + 1
+		reply.NextIndex = rf.getNextIndex()
 	} else if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 		reply.NextIndex = BackOff
 	} else {
@@ -565,7 +559,9 @@ func (rf *Raft) ElectLeader() {
 		if rf.role == LEADER {
 			rf.mu.Unlock()
 			continue
-		} else if rf.role == FOLLOWER || rf.role == CANDIDATE {
+		}
+
+		if rf.role == FOLLOWER || rf.role == CANDIDATE {
 			rf.changeToCandidate()
 			rf.mu.Unlock()
 			rf.getElectionFromPeers()
