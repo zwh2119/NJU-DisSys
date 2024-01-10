@@ -641,10 +641,12 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.commitIndex = 0
 	rf.applyChan = applyCh
 	rf.role = FOLLOWER
+	rf.leaderID = -1
 
 	guideEntry := LogEntry{
 		Command: nil,
 		Term:    0,
+		Index:   0,
 	}
 	rf.log = append(rf.log, guideEntry)
 
