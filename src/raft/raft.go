@@ -334,11 +334,11 @@ type AppendEntriesReply struct {
 }
 
 func getMajoritySameIndex(matchIndex []int) int {
-	num := len(matchIndex)
-	tmpMatchIndex := make([]int, num)
-	copy(tmpMatchIndex, matchIndex)
-	sort.Sort(sort.Reverse(sort.IntSlice(tmpMatchIndex)))
-	return tmpMatchIndex[num/2]
+	n := len(matchIndex)
+	tmp := make([]int, n)
+	copy(tmp, matchIndex)
+	sort.Sort(sort.Reverse(sort.IntSlice(tmp)))
+	return tmp[n/2]
 }
 
 func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, entries []LogEntry) {
