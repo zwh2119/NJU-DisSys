@@ -270,10 +270,7 @@ func (rf *Raft) getElectionFromPeers() {
 				}
 			}(server)
 
-		} else {
-			continue
 		}
-
 	}
 
 	replyCount := 1
@@ -361,42 +358,6 @@ func (rf *Raft) getNextIndex() int {
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	nextIndex := lastLogIndex + 1
 	return nextIndex
-}
-
-func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.mu.Lock()
-	defer rf.persist()
-	defer rf.mu.Unlock()
-
-	reply.Success = false
-	reply.Term = rf.currentTerm
-
-	if rf.currentTerm > args.Term {
-		return
-	}
-
-	rf.currentTerm = args.Term
-	rf.changeToFollower(args.Term)
-	rf.resetElectionTimer()
-
-	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
-	if args.PrevLogIndex > lastLogIndex {
-		reply.NextIndex = rf.getNextIndex()
-	} else if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
-		reply.NextIndex = BackOff
-	} else {
-		reply.Success = true
-		rf.log = append(rf.log[0:args.PrevLogIndex+1], args.Entries...)
-	}
-
-	if reply.Success {
-		rf.leaderID = args.LeaderId
-		if args.LeaderCommit > rf.commitIndex {
-			lastLogIndex, _ = rf.getLastLogIndexAndTerm()
-			rf.commitIndex = min(args.LeaderCommit, lastLogIndex)
-
-		}
-	}
 }
 
 func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *AppendEntriesReply) bool {
