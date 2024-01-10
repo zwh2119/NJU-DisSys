@@ -27,7 +27,6 @@ func TestInitialElection(t *testing.T) {
 	fmt.Printf("Test: initial election ...\n")
 
 	// is a leader elected?
-	fmt.Printf("here1\n")
 	cfg.checkOneLeader()
 
 	// does the leader+Term stay the same there is no failure?

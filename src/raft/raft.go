@@ -20,7 +20,6 @@ package raft
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -94,18 +93,13 @@ type Raft struct {
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-	fmt.Printf("here221\n")
 	var term int
 	var isLeader bool
-	fmt.Printf("here222\n")
 	// Your code here.
 	rf.mu.Lock()
-	fmt.Printf("here223\n")
 	term = rf.currentTerm
 	isLeader = rf.role == LEADER
-	fmt.Printf("here224\n")
 	rf.mu.Unlock()
-	fmt.Printf("here225\n")
 	return term, isLeader
 }
 
