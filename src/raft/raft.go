@@ -357,11 +357,11 @@ func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, ent
 }
 
 func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
-	prevlogIndex, prevLogTerm, entries := rf.getAppendLogs(slave)
+	prevLogIndex, prevLogTerm, entries := rf.getAppendLogs(slave)
 	args := AppendEntriesArgs{
 		Term:         rf.commitIndex,
 		LeaderId:     rf.me,
-		PrevLogIndex: prevlogIndex,
+		PrevLogIndex: prevLogIndex,
 		PrevLogTerm:  prevLogTerm,
 		Entries:      entries,
 		LeaderCommit: rf.commitIndex,
