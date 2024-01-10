@@ -31,9 +31,9 @@ import "dissys/labrpc"
 // import "encoding/gob"
 
 const (
-	FOLLOWER = iota
-	CANDIDATE
-	LEADER
+	LEADER    = 1
+	FOLLOWER  = 2
+	CANDIDATE = 3
 )
 
 const (
@@ -559,9 +559,7 @@ func (rf *Raft) ElectLeader() {
 		if rf.role == LEADER {
 			rf.mu.Unlock()
 			continue
-		}
-
-		if rf.role == FOLLOWER || rf.role == CANDIDATE {
+		} else if rf.role == FOLLOWER || rf.role == CANDIDATE {
 			rf.changeToCandidate()
 			rf.mu.Unlock()
 			rf.getElectionFromPeers()
@@ -582,13 +580,13 @@ func (rf *Raft) HeartBeat() {
 		}
 		rf.mu.Unlock()
 
-		for slave := range rf.peers {
-			if slave == rf.me {
-				rf.nextIndex[slave] = len(rf.log) + 1
-				rf.matchIndex[slave] = len(rf.log)
+		for peer := range rf.peers {
+			if peer == rf.me {
+				rf.nextIndex[peer] = len(rf.log) + 1
+				rf.matchIndex[peer] = len(rf.log)
 				continue
 			} else {
-				go rf.sendAppendEntriesToPeer(slave)
+				go rf.sendAppendEntriesToPeer(peer)
 			}
 		}
 	}
