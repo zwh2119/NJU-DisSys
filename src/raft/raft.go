@@ -334,16 +334,18 @@ type AppendEntriesReply struct {
 }
 
 func getMajoritySameIndex(matchIndex []int) int {
-	num := len(matchIndex)
-	tmpMatchIndex := make([]int, num)
-	copy(tmpMatchIndex, matchIndex)
-	sort.Sort(sort.Reverse(sort.IntSlice(tmpMatchIndex)))
-	return tmpMatchIndex[num/2]
+	n := len(matchIndex)
+	tmp := make([]int, n)
+	copy(tmp, matchIndex)
+	sort.Sort(sort.Reverse(sort.IntSlice(tmp)))
+	return tmp[n/2]
 }
 
 func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, entries []LogEntry) {
+
 	nextIndex := rf.nextIndex[slave]
 	lastLogIndex, lastLogTerm := rf.getLastLogIndexAndTerm()
+
 	if nextIndex <= 0 || nextIndex > lastLogIndex {
 		prevLogIndex = lastLogIndex
 		prevLogTerm = lastLogTerm
@@ -361,12 +363,12 @@ func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, ent
 }
 
 func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
-	prevLogIndex, prevLogTerm, entries := rf.getAppendLogs(slave)
+	prevLogIndex, preLogTerm, entries := rf.getAppendLogs(slave)
 	args := AppendEntriesArgs{
-		Term:         rf.commitIndex,
+		Term:         rf.currentTerm,
 		LeaderId:     rf.me,
 		PrevLogIndex: prevLogIndex,
-		PrevLogTerm:  prevLogTerm,
+		PrevLogTerm:  preLogTerm,
 		Entries:      entries,
 		LeaderCommit: rf.commitIndex,
 	}
@@ -374,6 +376,7 @@ func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
 }
 
 func (rf *Raft) getNextIndex() int {
+	// append log entry后必须再调用一次否则会返回错误的结果
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	nextIndex := lastLogIndex + 1
 	return nextIndex
