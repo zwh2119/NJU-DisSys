@@ -269,9 +269,10 @@ func (rf *Raft) getElectionFromPeers() {
 	for server := range rf.peers {
 
 		if server != rf.me {
+			args := rf.getRequestVoteArgs()
 			// go routine
 			go func(server int) {
-				args := rf.getRequestVoteArgs()
+
 				reply := RequestVoteReply{}
 				ok := rf.sendRequestVote(server, args, &reply)
 				if ok {
@@ -293,7 +294,8 @@ func (rf *Raft) getElectionFromPeers() {
 		vote := <-voteCh
 		rf.mu.Lock()
 		if rf.role == FOLLOWER {
-
+			rf.mu.Unlock()
+			return
 		}
 		rf.mu.Unlock()
 		replyCount += 1
@@ -627,9 +629,6 @@ func (rf *Raft) Apply() {
 // for any long-running work.
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
-
-	DPrintf("[DEBUG] Svr[%v]: Start Func Make()\n", me)
-	defer DPrintf("[DEBUG] Svr[%v]: End Func Make()\n", me)
 
 	rf := &Raft{}
 	rf.peers = peers
