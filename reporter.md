@@ -1,24 +1,49 @@
 <div align='center' ><font size='70'><b>实验报告</b></font></div>
 
-# 实验2 Part I
-
-## 1.问题分析
-
-## 2.系统设计与实现
-
-## 3. 实验演示
-
-## 4.总结
 
 
+# 1.问题分析
 
-# 实验2 Part II
+# 2.系统设计与实现
 
-## 1.问题分析
+# 3. 实验演示
 
-## 2.系统设计与实现
+## Part 1
+- Election
 
-## 3. 实验演示
+`TestInitialElection`、`TestReElection`测试结果
 
-## 4.总结
+![](pics/election.png)
 
+## Part 2
+- Agree
+
+`TestBasicAgree`、`TestFailAgree`、`TestFailNoAgree`、`TestUnreliableAgree`测试结果
+
+![](pics/agree.png)
+
+- ConcurrentStarts
+
+`TestConcurrentStarts`测试结果
+
+![](pics/concurrentStart.png)
+
+- Rejoin
+
+`TestRejoin`测试结果
+
+![](pics/rejoin.png)
+
+- Backup
+
+`TestBackup`测试结果
+
+![](pics/backup.png)
+
+- Count
+
+`TestCount`测试结果
+
+![](pics/count.png)
+
+# 4.总结
