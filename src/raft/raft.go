@@ -20,6 +20,7 @@ package raft
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -181,6 +182,8 @@ func (rf *Raft) getLastLogIndexAndTerm() (lastLogIndex int, lastLogTerm int) {
 	lastLogIndex = rf.log[last].Index
 	lastLogTerm = rf.log[last].Term
 
+	assert(last, lastLogIndex, fmt.Sprintf("Server[%v](%s) %+v, The slice index should be equal to lastLogIndex", rf.me, rf.getRole(), rf.log))
+
 	return lastLogIndex, lastLogTerm
 }
 
@@ -188,7 +191,9 @@ func (rf *Raft) getLastLogIndexAndTerm() (lastLogIndex int, lastLogTerm int) {
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here.
 	rf.mu.Lock()
+	DPrintf("[DEBUG] Svr[%v]:(%s, Term:%v) Start Func RequestVote with args:%+v", rf.me, rf.getRole(), rf.currentTerm, args)
 	defer rf.mu.Unlock()
+	defer DPrintf("[DEBUG] Svr[%v]:(%s) End Func RequestVote with args:%+v, reply:%+v", rf.me, rf.getRole(), args, reply)
 
 	reply.VoteGranted = false
 	reply.Term = rf.currentTerm
@@ -213,6 +218,8 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 		reply.VoteGranted = true
 		rf.resetElectionTimer()
 	}
+
+	DPrintf("[DEBUG] Svr[%v]:(%s) Vote for %v", rf.me, rf.getRole(), args.CandidateId)
 
 }
 
@@ -251,6 +258,7 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 }
 
 func (rf *Raft) getElectionFromPeers() {
+	DPrintf("[DEBUG] Svr[%v]:(%s) Begin sendRequestVoteRPCToOthers", rf.me, rf.getRole())
 	numServer := len(rf.peers)
 	voteCh := make(chan bool, numServer)
 
@@ -283,6 +291,7 @@ func (rf *Raft) getElectionFromPeers() {
 		rf.mu.Lock()
 		if rf.role == FOLLOWER {
 			rf.mu.Unlock()
+			DPrintf("[DEBUG] Svr[%v]:(%s) has been a follower", rf.me, rf.getRole())
 			return
 		}
 		rf.mu.Unlock()
@@ -299,6 +308,8 @@ func (rf *Raft) getElectionFromPeers() {
 		rf.mu.Lock()
 		rf.changeToLeader()
 		rf.mu.Unlock()
+	} else {
+		DPrintf("[DEBUG] Svr[%v]:(%s) get %v vote, Fails", rf.me, rf.getRole(), toMeCount)
 	}
 }
 
@@ -372,7 +383,15 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	reply.Term = rf.currentTerm
 
 	if rf.currentTerm > args.Term {
+		DPrintf("[DEBUG] Svr[%v]:(%s) Reject AppendEntries due to currentTerm > args.Term", rf.me, rf.getRole())
 		return
+	}
+
+	if len(args.Entries) == 0 {
+		DPrintf("[DEBUG] Svr[%v]:(%s, Term:%v) Get Heart Beats from %v", rf.me, rf.getRole(), rf.currentTerm, args.LeaderId)
+	} else {
+		DPrintf("[DEBUG] Svr[%v]:(%s, Term:%v) Start Func AppendEntries with args:%+v", rf.me, rf.getRole(), rf.currentTerm, args)
+		defer DPrintf("[DEBUG] Svr[%v]:(%s) End Func AppendEntries with args:%+v, reply:%+v", rf.me, rf.getRole(), args, reply)
 	}
 
 	rf.currentTerm = args.Term
@@ -381,8 +400,10 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	if args.PrevLogIndex > lastLogIndex {
+		DPrintf("[DEBUG] Svr[%v]:(%s) Reject AppendEntries due to lastLogIndex < args.PrevLogIndex", rf.me, rf.getRole())
 		reply.NextIndex = rf.getNextIndex()
 	} else if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		DPrintf("[DEBUG] Svr[%v]:(%s) Previous log entries do not match", rf.me, rf.getRole())
 		reply.NextIndex = BackOff
 	} else {
 		reply.Success = true
@@ -394,6 +415,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 		if args.LeaderCommit > rf.commitIndex {
 			lastLogIndex, _ = rf.getLastLogIndexAndTerm()
 			rf.commitIndex = min(args.LeaderCommit, lastLogIndex)
+			DPrintf("[DEBUG] Svr[%v]:(%s) Follower Update commitIndex, lastLogIndex is %v", rf.me, rf.getRole(), lastLogIndex)
 
 		}
 	}
@@ -411,12 +433,18 @@ func (rf *Raft) sendAppendEntriesToPeer(slave int) {
 		return
 	}
 	args := rf.getAppendEntriesArgs(slave)
+
+	if len(args.Entries) > 0 {
+		DPrintf("[DEBUG] Svr[%v]:(%s) sendAppendEntriesRPCToPeer send to Svr[%v]", rf.me, rf.getRole(), slave)
+	}
+
 	rf.mu.Unlock()
 	reply := AppendEntriesReply{}
 	ok := rf.sendAppendEntries(slave, args, &reply)
 	if ok {
 		rf.mu.Lock()
 		if reply.Term > rf.currentTerm {
+			DPrintf("[DEBUG] Svr[%v] (%s) Get reply for AppendEntries from %v, reply.Term > rf.currentTerm", rf.me, rf.getRole(), slave)
 			rf.changeToFollower(reply.Term)
 			rf.resetElectionTimer()
 			rf.mu.Unlock()
@@ -428,16 +456,20 @@ func (rf *Raft) sendAppendEntriesToPeer(slave int) {
 			return
 		}
 
+		DPrintf("[DEBUG] Svr[%v] (%s) Get reply for AppendEntries from %v, reply.Term <= rf.currentTerm, reply is %+v", rf.me, rf.getRole(), slave, reply)
 		if reply.Success {
 			lenEntries := len(args.Entries)
 			rf.matchIndex[slave] = args.PrevLogIndex + lenEntries
 			rf.nextIndex[slave] = rf.matchIndex[slave] + 1
+			DPrintf("[DEBUG] Svr[%v] (%s): matchIndex[%v] is %v", rf.me, rf.getRole(), slave, rf.matchIndex[slave])
 			majorityIndex := getMajoritySameIndex(rf.matchIndex)
 
 			if rf.log[majorityIndex].Term == rf.currentTerm && majorityIndex > rf.commitIndex {
 				rf.commitIndex = majorityIndex
+				DPrintf("[DEBUG] Svr[%v] (%s): Update commitIndex to %v", rf.me, rf.getRole(), rf.commitIndex)
 			}
 		} else {
+			DPrintf("[DEBUG] Svr[%v] (%s): append to Svr[%v]Success is False, reply is %+v", rf.me, rf.getRole(), slave, &reply)
 			if reply.NextIndex > 0 {
 				rf.nextIndex[slave] = reply.NextIndex
 
@@ -516,14 +548,23 @@ func (rf *Raft) changeToCandidate() {
 	rf.votedFor = rf.me
 	rf.resetElectionTimer()
 	rf.persist()
+	DPrintf("[DEBUG] Svr[%v]:(%s) switch to candidate.", rf.me, rf.getRole())
 
 }
 
 func (rf *Raft) changeToFollower(term int) {
+	var flag bool
+	if rf.role != FOLLOWER {
+		flag = true
+	}
 
 	rf.role = FOLLOWER
 	rf.currentTerm = term
 	rf.votedFor = -1
+
+	if flag {
+		DPrintf("[DEBUG] Svr[%v]:(%s) switch to follower.", rf.me, rf.getRole())
+	}
 
 	rf.persist()
 
@@ -547,6 +588,7 @@ func (rf *Raft) changeToLeader() {
 
 	rf.matchIndex[rf.me] = numLog - 1
 	rf.persist()
+	DPrintf("[DEBUG] Svr[%v]:(%s) switch to leader and reset heartBeatTimer 0.", rf.me, rf.getRole())
 
 }
 
@@ -556,7 +598,9 @@ func (rf *Raft) ElectLeader() {
 		rf.resetElectionTimer()
 
 		rf.mu.Lock()
+		DPrintf("[DEBUG] Svr[%v]:(%s) Start Leader Election Loop", rf.me, rf.getRole())
 		if rf.role == LEADER {
+			DPrintf("[DEBUG] Svr[%v]:(%s) End Leader Election Loop, Leader is Svr[%v]", rf.me, rf.getRole(), rf.me)
 			rf.mu.Unlock()
 			continue
 		}
@@ -624,6 +668,9 @@ func (rf *Raft) Apply() {
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 
+	DPrintf("[DEBUG] Svr[%v]: Start Func Make()\n", me)
+	defer DPrintf("[DEBUG] Svr[%v]: End Func Make()\n", me)
+
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -656,4 +703,48 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	go rf.Apply()
 
 	return rf
+}
+
+func (rf *Raft) logToString() string {
+	res := ""
+	for index, log := range rf.log {
+		if index <= rf.commitIndex {
+			res += fmt.Sprintf("{C*%v T*%v i*%v}", log.Command, log.Term, log.Index)
+		} else {
+			res += fmt.Sprintf("{C:%v T:%v i:%v}", log.Command, log.Term, log.Index)
+
+		}
+	}
+	return res
+}
+
+func (rf *Raft) toString() string {
+	return fmt.Sprintf("LID: %v;Term:%d;log:%s;commitIndex:%v;",
+		rf.leaderID, rf.currentTerm, rf.logToString(), rf.commitIndex)
+}
+
+func (rf *Raft) toStringWithoutLog() string {
+	return fmt.Sprintf("LID: %v;Term:%d;commitIndex:%v;",
+		rf.leaderID, rf.currentTerm, rf.commitIndex)
+}
+
+func (rf *Raft) getRole() string {
+	var role string
+	switch rf.role {
+	case LEADER:
+		role = "Lead"
+	case FOLLOWER:
+		role = "Foll"
+	case CANDIDATE:
+		role = "Cand"
+	}
+	//return role + " " + rf.toStringWithoutLog()
+	return role + " " + rf.toString()
+	//return role
+}
+
+func assert(a interface{}, b interface{}, msg interface{}) {
+	if a != b {
+		panic(msg)
+	}
 }
