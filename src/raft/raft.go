@@ -376,7 +376,6 @@ func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
 }
 
 func (rf *Raft) getNextIndex() int {
-	// append log entry后必须再调用一次否则会返回错误的结果
 	lastLogIndex, _ := rf.getLastLogIndexAndTerm()
 	nextIndex := lastLogIndex + 1
 	return nextIndex
