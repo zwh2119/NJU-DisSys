@@ -190,20 +190,23 @@ func (rf *Raft) getLastLogIndexAndTerm() (lastLogIndex int, lastLogTerm int) {
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here.
+	// TODO: Implement it so that servers will vote for one another
 	rf.mu.Lock()
 	DPrintf("[DEBUG] Svr[%v]:(%s, Term:%v) Start Func RequestVote with args:%+v", rf.me, rf.getRole(), rf.currentTerm, args)
 	defer rf.mu.Unlock()
 	defer DPrintf("[DEBUG] Svr[%v]:(%s) End Func RequestVote with args:%+v, reply:%+v", rf.me, rf.getRole(), args, reply)
 
+	// 初始化
 	reply.VoteGranted = false
 	reply.Term = rf.currentTerm
 
-	if rf.currentTerm < args.Term {
-		rf.changeToFollower(args.Term)
-	} else if rf.currentTerm > args.Term {
+	if rf.currentTerm > args.Term {
 		return
+	} else if rf.currentTerm < args.Term {
+		rf.changeToFollower(args.Term)
 	}
 
+	// 是否可以进行投票
 	if rf.rejectVote(args) {
 		return
 	}
@@ -220,7 +223,6 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	DPrintf("[DEBUG] Svr[%v]:(%s) Vote for %v", rf.me, rf.getRole(), args.CandidateId)
-
 }
 
 func (rf *Raft) rejectVote(args RequestVoteArgs) bool {
