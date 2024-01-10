@@ -342,10 +342,8 @@ func getMajoritySameIndex(matchIndex []int) int {
 }
 
 func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, entries []LogEntry) {
-
 	nextIndex := rf.nextIndex[slave]
 	lastLogIndex, lastLogTerm := rf.getLastLogIndexAndTerm()
-
 	if nextIndex <= 0 || nextIndex > lastLogIndex {
 		prevLogIndex = lastLogIndex
 		prevLogTerm = lastLogTerm
@@ -363,12 +361,12 @@ func (rf *Raft) getAppendLogs(slave int) (prevLogIndex int, prevLogTerm int, ent
 }
 
 func (rf *Raft) getAppendEntriesArgs(slave int) AppendEntriesArgs {
-	prevLogIndex, preLogTerm, entries := rf.getAppendLogs(slave)
+	prevLogIndex, prevLogTerm, entries := rf.getAppendLogs(slave)
 	args := AppendEntriesArgs{
-		Term:         rf.currentTerm,
+		Term:         rf.commitIndex,
 		LeaderId:     rf.me,
 		PrevLogIndex: prevLogIndex,
-		PrevLogTerm:  preLogTerm,
+		PrevLogTerm:  prevLogTerm,
 		Entries:      entries,
 		LeaderCommit: rf.commitIndex,
 	}
